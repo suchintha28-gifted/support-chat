@@ -8,7 +8,7 @@ app.use(express.static('public'));
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 app.post('/chat', async (req, res) => {
-  const { message, sessionId, lastEventId } = req.body;
+  const { message, sessionId } = req.body;
 
   try {
     let currentSessionId = sessionId;
@@ -32,26 +32,22 @@ app.post('/chat', async (req, res) => {
     );
 
     let reply = '';
-    let newLastEventId = lastEventId || null;
 
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 3000));
-      const params = newLastEventId ? { after: newLastEventId } : {};
+
       const events = await client.beta.sessions.events.list(
         currentSessionId,
-        params,
+        { limit: 100, order: 'desc' },
         { headers: { 'anthropic-beta': 'managed-agents-2026-04-01' } }
       );
-
-      if (events.data.length > 0) {
-        newLastEventId = events.data[events.data.length - 1].id;
-      }
 
       const idle = events.data.find(e => e.type === 'session.status_idle');
       const messages = events.data.filter(e => e.type === 'agent.message');
 
       if (idle && messages.length > 0) {
-        reply = messages[messages.length - 1].content
+        // events are desc order, so first agent.message is the latest
+        reply = messages[0].content
           .filter(c => c.type === 'text')
           .map(c => c.text)
           .join('');
@@ -59,9 +55,9 @@ app.post('/chat', async (req, res) => {
       }
     }
 
-    res.json({ reply, sessionId: currentSessionId, lastEventId: newLastEventId });
+    res.json({ reply, sessionId: currentSessionId });
   } catch (err) {
-    console.error(err);
+    console.error('ERROR:', err.message || err);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
