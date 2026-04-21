@@ -37,10 +37,12 @@ async function apiGet(path) {
 }
 
 app.post('/chat', async (req, res) => {
-  const { message, sessionId } = req.body;
+  const { message, sessionId, eventCount } = req.body;
 
   try {
     let currentSessionId = sessionId;
+    let knownEventCount = eventCount || 0;
+
     if (!currentSessionId) {
       const session = await apiPost('/v1/sessions', {
         agent: process.env.AGENT_ID,
@@ -56,33 +58,34 @@ app.post('/chat', async (req, res) => {
       events: [{ type: 'user.message', content: [{ type: 'text', text: message }] }],
     });
 
-    // subtract 2s buffer to account for clock skew between server and API
-    const sentAt = new Date(Date.now() - 2000).toISOString();
-    console.log('sentAt:', sentAt);
     let reply = '';
 
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 3000));
 
-      const events = await apiGet(`/v1/sessions/${currentSessionId}/events?limit=100&order=desc`);
-      const newEvents = events.data.filter(e => e.created_at >= sentAt);
+      const result = await apiGet(`/v1/sessions/${currentSessionId}/events?limit=100&order=asc`);
+      const allEvents = result.data;
 
-      console.log(`Poll ${i}: ${events.data.length} total, ${newEvents.length} new, types: ${newEvents.map(e => e.type).join(', ')}`);
+      // only look at events we haven't seen before
+      const newEvents = allEvents.slice(knownEventCount);
+
+      console.log(`Poll ${i}: ${allEvents.length} total, ${newEvents.length} new, types: ${newEvents.map(e => e.type).join(', ')}`);
 
       const idle = newEvents.find(e => e.type === 'session.status_idle');
-      const messages = newEvents.filter(e => e.type === 'agent.message');
+      const agentMessages = newEvents.filter(e => e.type === 'agent.message');
 
-      if (idle && messages.length > 0) {
-        reply = messages[0].content
+      if (idle && agentMessages.length > 0) {
+        reply = agentMessages[agentMessages.length - 1].content
           .filter(c => c.type === 'text')
           .map(c => c.text)
           .join('');
+        knownEventCount = allEvents.length;
         break;
       }
     }
 
     console.log('Final reply:', reply || '(empty)');
-    res.json({ reply, sessionId: currentSessionId });
+    res.json({ reply, sessionId: currentSessionId, eventCount: knownEventCount });
   } catch (err) {
     console.error('ERROR:', err.message || err);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
