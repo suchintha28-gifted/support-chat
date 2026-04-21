@@ -13,10 +13,6 @@ app.post('/chat', async (req, res) => {
   try {
     let currentSessionId = sessionId;
     if (!currentSessionId) {
-      console.log('AGENT_ID:', JSON.stringify(process.env.AGENT_ID));
-      console.log('ENVIRONMENT_ID:', JSON.stringify(process.env.ENVIRONMENT_ID));
-      console.log('VAULT_ID:', JSON.stringify(process.env.VAULT_ID));
-
       const session = await client.beta.sessions.create(
         {
           agent: process.env.AGENT_ID,
@@ -40,7 +36,7 @@ app.post('/chat', async (req, res) => {
 
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 3000));
-      const params = newLastEventId ? { after_id: newLastEventId } : {};
+      const params = newLastEventId ? { after: newLastEventId } : {};
       const events = await client.beta.sessions.events.list(
         currentSessionId,
         params,
