@@ -1,5 +1,6 @@
 const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
+console.log('SDK version:', require('/app/node_modules/@anthropic-ai/sdk/package.json').version);
 
 const app = express();
 app.use(express.json());
