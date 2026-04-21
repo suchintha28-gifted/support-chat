@@ -1,6 +1,7 @@
 {
   "name": "gifted-support-agent",
   "version": "1.0.0",
+  "description": "Gifted customer support agent",
   "scripts": {
     "start": "node server.js"
   },
