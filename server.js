@@ -56,14 +56,15 @@ app.post('/chat', async (req, res) => {
       events: [{ type: 'user.message', content: [{ type: 'text', text: message }] }],
     });
 
-    const sentAt = new Date().toISOString();
+    // subtract 2s buffer to account for clock skew between server and API
+    const sentAt = new Date(Date.now() - 2000).toISOString();
+    console.log('sentAt:', sentAt);
     let reply = '';
 
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 3000));
 
       const events = await apiGet(`/v1/sessions/${currentSessionId}/events?limit=100&order=desc`);
-
       const newEvents = events.data.filter(e => e.created_at >= sentAt);
 
       console.log(`Poll ${i}: ${events.data.length} total, ${newEvents.length} new, types: ${newEvents.map(e => e.type).join(', ')}`);
