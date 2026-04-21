@@ -33,6 +33,7 @@
   </div>
   <script>
     let sessionId = null;
+    let lastEventId = null;
 
     function handleKey(e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -53,11 +54,12 @@
         const res = await fetch('/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, sessionId })
+          body: JSON.stringify({ message: text, sessionId, lastEventId })
         });
         const data = await res.json();
         thinking.remove();
         sessionId = data.sessionId;
+        lastEventId = data.lastEventId;
         addMessage(data.reply || 'Sorry, I didn\'t get a response. Please try again.', 'agent');
       } catch {
         thinking.remove();
