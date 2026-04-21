@@ -13,6 +13,10 @@ app.post('/chat', async (req, res) => {
   try {
     let currentSessionId = sessionId;
     if (!currentSessionId) {
+      console.log('AGENT_ID:', JSON.stringify(process.env.AGENT_ID));
+      console.log('ENVIRONMENT_ID:', JSON.stringify(process.env.ENVIRONMENT_ID));
+      console.log('VAULT_ID:', JSON.stringify(process.env.VAULT_ID));
+
       const session = await client.beta.sessions.create(
         {
           agent: process.env.AGENT_ID,
