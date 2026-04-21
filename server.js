@@ -23,6 +23,7 @@ app.post('/chat', async (req, res) => {
         { headers: { 'anthropic-beta': 'managed-agents-2026-04-01' } }
       );
       currentSessionId = session.id;
+      console.log('Created session:', currentSessionId);
     }
 
     await client.beta.sessions.events.send(
@@ -42,11 +43,12 @@ app.post('/chat', async (req, res) => {
         { headers: { 'anthropic-beta': 'managed-agents-2026-04-01' } }
       );
 
+      console.log(`Poll ${i}: ${events.data.length} events, types: ${events.data.map(e => e.type).join(', ')}`);
+
       const idle = events.data.find(e => e.type === 'session.status_idle');
       const messages = events.data.filter(e => e.type === 'agent.message');
 
       if (idle && messages.length > 0) {
-        // events are desc order, so first agent.message is the latest
         reply = messages[0].content
           .filter(c => c.type === 'text')
           .map(c => c.text)
@@ -54,6 +56,8 @@ app.post('/chat', async (req, res) => {
         break;
       }
     }
+
+    console.log('Final reply:', reply || '(empty)');
 
     res.json({ reply, sessionId: currentSessionId });
   } catch (err) {
