@@ -56,6 +56,7 @@ app.post('/chat', async (req, res) => {
       events: [{ type: 'user.message', content: [{ type: 'text', text: message }] }],
     });
 
+    const sentAt = new Date().toISOString();
     let reply = '';
 
     for (let i = 0; i < 60; i++) {
@@ -63,10 +64,12 @@ app.post('/chat', async (req, res) => {
 
       const events = await apiGet(`/v1/sessions/${currentSessionId}/events?limit=100&order=desc`);
 
-      console.log(`Poll ${i}: ${events.data.length} events, types: ${events.data.map(e => e.type).join(', ')}`);
+      const newEvents = events.data.filter(e => e.created_at >= sentAt);
 
-      const idle = events.data.find(e => e.type === 'session.status_idle');
-      const messages = events.data.filter(e => e.type === 'agent.message');
+      console.log(`Poll ${i}: ${events.data.length} total, ${newEvents.length} new, types: ${newEvents.map(e => e.type).join(', ')}`);
+
+      const idle = newEvents.find(e => e.type === 'session.status_idle');
+      const messages = newEvents.filter(e => e.type === 'agent.message');
 
       if (idle && messages.length > 0) {
         reply = messages[0].content
