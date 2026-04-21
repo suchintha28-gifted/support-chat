@@ -1,12 +1,40 @@
 const express = require('express');
-const Anthropic = require('@anthropic-ai/sdk');
-console.log('SDK version:', require('/app/node_modules/@anthropic-ai/sdk/package.json').version);
-
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const API_KEY = process.env.ANTHROPIC_API_KEY;
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'x-api-key': API_KEY,
+  'anthropic-version': '2023-06-01',
+  'anthropic-beta': 'managed-agents-2026-04-01',
+};
+
+async function apiPost(path, body) {
+  const res = await fetch(`https://api.anthropic.com${path}`, {
+    method: 'POST',
+    headers: HEADERS,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`POST ${path} failed: ${err}`);
+  }
+  return res.json();
+}
+
+async function apiGet(path) {
+  const res = await fetch(`https://api.anthropic.com${path}`, {
+    method: 'GET',
+    headers: HEADERS,
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`GET ${path} failed: ${err}`);
+  }
+  return res.json();
+}
 
 app.post('/chat', async (req, res) => {
   const { message, sessionId } = req.body;
@@ -14,35 +42,26 @@ app.post('/chat', async (req, res) => {
   try {
     let currentSessionId = sessionId;
     if (!currentSessionId) {
-      const session = await client.beta.sessions.create(
-        {
-          agent: process.env.AGENT_ID,
-          environment_id: process.env.ENVIRONMENT_ID,
-          vault_ids: process.env.VAULT_ID ? [process.env.VAULT_ID] : [],
-          title: 'Customer Support Chat',
-        },
-        { headers: { 'anthropic-beta': 'managed-agents-2026-04-01' } }
-      );
+      const session = await apiPost('/v1/sessions', {
+        agent: process.env.AGENT_ID,
+        environment_id: process.env.ENVIRONMENT_ID,
+        vault_ids: process.env.VAULT_ID ? [process.env.VAULT_ID] : [],
+        title: 'Customer Support Chat',
+      });
       currentSessionId = session.id;
       console.log('Created session:', currentSessionId);
     }
 
-    await client.beta.sessions.events.send(
-      currentSessionId,
-      { events: [{ type: 'user.message', content: [{ type: 'text', text: message }] }] },
-      { headers: { 'anthropic-beta': 'managed-agents-2026-04-01' } }
-    );
+    await apiPost(`/v1/sessions/${currentSessionId}/events`, {
+      events: [{ type: 'user.message', content: [{ type: 'text', text: message }] }],
+    });
 
     let reply = '';
 
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 3000));
 
-      const events = await client.beta.sessions.events.list(
-        currentSessionId,
-        { limit: 100, order: 'desc' },
-        { headers: { 'anthropic-beta': 'managed-agents-2026-04-01' } }
-      );
+      const events = await apiGet(`/v1/sessions/${currentSessionId}/events?limit=100&order=desc`);
 
       console.log(`Poll ${i}: ${events.data.length} events, types: ${events.data.map(e => e.type).join(', ')}`);
 
@@ -59,7 +78,6 @@ app.post('/chat', async (req, res) => {
     }
 
     console.log('Final reply:', reply || '(empty)');
-
     res.json({ reply, sessionId: currentSessionId });
   } catch (err) {
     console.error('ERROR:', err.message || err);
