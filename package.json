@@ -1,7 +1,7 @@
 {
-  "name": "gifted-support-agent",
+  "name": "gifted-support-bot",
   "version": "1.0.0",
-  "description": "Gifted customer support agent",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
