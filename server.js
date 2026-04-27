@@ -43,10 +43,17 @@ function cleanAgentResponse(text) {
   // Remove entire <function_calls>...</function_calls> blocks
   let cleaned = text.replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '');
   
+  // Remove entire <tool_use>...</tool_use> blocks
+  cleaned = cleaned.replace(/<tool_use>[\s\S]*?<\/tool_use>/g, '');
+  
+  // Remove all <*> tags (including nested content)
+  cleaned = cleaned.replace(/<[^>]*>[\s\S]*?<\/antml:[^>]*>/g, '');
+  cleaned = cleaned.replace(/<\/?antml:[^>]*>/g, '');
+  
   // Remove standalone XML-like tags that might remain
   cleaned = cleaned.replace(/<\/?invoke[^>]*>/g, '');
   cleaned = cleaned.replace(/<\/?parameter[^>]*>/g, '');
-  cleaned = cleaned.replace(/<\/?antml:[^>]*>/g, '');
+  cleaned = cleaned.replace(/<\/?atml:[^>]*>/g, '');
   
   // Clean up extra whitespace and newlines
   cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n');
