@@ -12,26 +12,26 @@ const HEADERS = {
 };
 
 async function apiPost(path, body) {
-  const res = await fetch(\`https://api.anthropic.com\${path}\`, {
+  const res = await fetch(`https://api.anthropic.com${path}`, {
     method: 'POST',
     headers: HEADERS,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(\`POST \${path} failed: \${err}\`);
+    throw new Error(`POST ${path} failed: ${err}`);
   }
   return res.json();
 }
 
 async function apiGet(path) {
-  const res = await fetch(\`https://api.anthropic.com\${path}\`, {
+  const res = await fetch(`https://api.anthropic.com${path}`, {
     method: 'GET',
     headers: HEADERS,
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(\`GET \${path} failed: \${err}\`);
+    throw new Error(`GET ${path} failed: ${err}`);
   }
   return res.json();
 }
@@ -49,7 +49,7 @@ function cleanAgentResponse(text) {
   cleaned = cleaned.replace(/<\/?antml:[^>]*>/g, '');
   
   // Clean up extra whitespace and newlines
-  cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n'); // Remove triple+ newlines
+  cleaned = cleaned.replace(/\n\s*\n\s*\n/g, '\n\n');
   cleaned = cleaned.trim();
   
   return cleaned;
@@ -72,7 +72,7 @@ app.post('/chat', async (req, res) => {
       console.log('Created session:', currentSessionId);
     }
 
-    await apiPost(\`/v1/sessions/\${currentSessionId}/events\`, {
+    await apiPost(`/v1/sessions/${currentSessionId}/events`, {
       events: [{ type: 'user.message', content: [{ type: 'text', text: message }] }],
     });
 
@@ -81,28 +81,23 @@ app.post('/chat', async (req, res) => {
     for (let i = 0; i < 60; i++) {
       await new Promise(r => setTimeout(r, 3000));
 
-      const result = await apiGet(\`/v1/sessions/\${currentSessionId}/events?limit=100&order=asc\`);
+      const result = await apiGet(`/v1/sessions/${currentSessionId}/events?limit=100&order=asc`);
       const allEvents = result.data;
 
-      // only look at events we haven't seen before
       const newEvents = allEvents.slice(knownEventCount);
 
-      console.log(\`Poll \${i}: \${allEvents.length} total, \${newEvents.length} new, types: \${newEvents.map(e => e.type).join(', ')}\`);
+      console.log(`Poll ${i}: ${allEvents.length} total, ${newEvents.length} new, types: ${newEvents.map(e => e.type).join(', ')}`);
 
       const idle = newEvents.find(e => e.type === 'session.status_idle');
       const agentMessages = newEvents.filter(e => e.type === 'agent.message');
 
       if (idle && agentMessages.length > 0) {
-        // Get the last agent message
         const lastMessage = agentMessages[agentMessages.length - 1];
         
-        // Filter to ONLY text blocks (skip tool_use, tool_result, etc.)
         const textBlocks = lastMessage.content.filter(c => c.type === 'text');
         
-        // Join all text blocks
         const rawReply = textBlocks.map(c => c.text).join('\n');
         
-        // Clean the response - remove any function_calls XML that might be in the text
         reply = cleanAgentResponse(rawReply);
         
         knownEventCount = allEvents.length;
@@ -119,4 +114,4 @@ app.post('/chat', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(\`Server running on port \${PORT}\`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
