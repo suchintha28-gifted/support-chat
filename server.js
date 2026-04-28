@@ -73,6 +73,7 @@ app.post('/chat', async (req, res) => {
       const session = await apiPost('/v1/sessions', {
         agent: process.env.AGENT_ID,
         environment_id: process.env.ENVIRONMENT_ID,
+        vault_ids: [process.env.VAULT_ID],  // ← ADDED THIS LINE
         title: 'Gifted Support Chat',
       });
       currentSessionId = session.id;
