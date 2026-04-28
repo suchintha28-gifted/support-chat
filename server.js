@@ -95,6 +95,18 @@ app.post('/chat', async (req, res) => {
 
       console.log(`Poll ${i}: ${allEvents.length} total, ${newEvents.length} new, types: ${newEvents.map(e => e.type).join(', ')}`);
 
+      // Log tool-related events for debugging
+      const toolUseEvents = newEvents.filter(e => e.type === 'agent.tool_use');
+      const toolResultEvents = newEvents.filter(e => e.type === 'agent.tool_result');
+      
+      if (toolUseEvents.length > 0) {
+        console.log(`🔧 TOOL USE DETECTED:`, JSON.stringify(toolUseEvents, null, 2));
+      }
+      
+      if (toolResultEvents.length > 0) {
+        console.log(`✅ TOOL RESULT DETECTED:`, JSON.stringify(toolResultEvents, null, 2));
+      }
+
       const idle = newEvents.find(e => e.type === 'session.status_idle');
       const agentMessages = newEvents.filter(e => e.type === 'agent.message');
 
@@ -105,7 +117,12 @@ app.post('/chat', async (req, res) => {
         
         const rawReply = textBlocks.map(c => c.text).join('\n');
         
-        reply = cleanAgentResponse(rawReply);
+        // TEMPORARY: Show raw output for debugging - remove cleanAgentResponse
+        reply = rawReply;
+        // reply = cleanAgentResponse(rawReply);
+        
+        console.log('RAW AGENT REPLY:', rawReply);
+        console.log('FINAL REPLY TO USER:', reply);
         
         knownEventCount = allEvents.length;
         break;
