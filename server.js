@@ -110,22 +110,32 @@ app.post('/chat', async (req, res) => {
       const idle = newEvents.find(e => e.type === 'session.status_idle');
       const agentMessages = newEvents.filter(e => e.type === 'agent.message');
 
+      // Only return when session is idle AND we have agent messages
+      // This ensures we get ALL messages including tool results
       if (idle && agentMessages.length > 0) {
-        const lastMessage = agentMessages[agentMessages.length - 1];
+        // Get ALL agent messages from the entire session, not just new ones
+        const allAgentMessages = allEvents.filter(e => e.type === 'agent.message');
         
-        const textBlocks = lastMessage.content.filter(c => c.type === 'text');
-        
-        const rawReply = textBlocks.map(c => c.text).join('\n');
-        
-        // TEMPORARY: Show raw output for debugging - remove cleanAgentResponse
-        reply = rawReply;
-        // reply = cleanAgentResponse(rawReply);
-        
-        console.log('RAW AGENT REPLY:', rawReply);
-        console.log('FINAL REPLY TO USER:', reply);
-        
-        knownEventCount = allEvents.length;
-        break;
+        if (allAgentMessages.length > 0) {
+          // Use the LAST agent message (most recent, includes tool results)
+          const lastMessage = allAgentMessages[allAgentMessages.length - 1];
+          
+          const textBlocks = lastMessage.content.filter(c => c.type === 'text');
+          
+          const rawReply = textBlocks.map(c => c.text).join('\n');
+          
+          // TEMPORARY: Show raw output for debugging - remove cleanAgentResponse
+          reply = rawReply;
+          // reply = cleanAgentResponse(rawReply);
+          
+          console.log('TOTAL AGENT MESSAGES:', allAgentMessages.length);
+          console.log('USING LAST MESSAGE (index:', allAgentMessages.length - 1, ')');
+          console.log('RAW AGENT REPLY:', rawReply);
+          console.log('FINAL REPLY TO USER:', reply);
+          
+          knownEventCount = allEvents.length;
+          break;
+        }
       }
     }
 
